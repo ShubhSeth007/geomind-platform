@@ -115,7 +115,7 @@ async def analyze_assets(
     try:
         response = groq_client.chat.completions.create(
             messages=[{"role": "user", "content": fusion_prompt}],
-            model="llama-3.3-70b",
+            model="llama-3.3-70b-versatile",
             temperature=0.2
         )
         fusion_report_md = response.choices[0].message.content
