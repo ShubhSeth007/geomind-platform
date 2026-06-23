@@ -1,0 +1,1 @@
+# geomind-platform
