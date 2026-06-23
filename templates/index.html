@@ -3,87 +3,431 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GeoMind // Multi-Modal Workspace</title>
+    <title>GeoMind // Multi-Modal Geospatial Intelligence</title>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background-color: #0f172a; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; }
-        .glass-card { background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; backdrop-filter: blur(8px); }
-        .text-gradient { background: linear-gradient(135deg, #38bdf8, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .badge-cv { background-color: #4f46e5; color: #fff; }
-        .report-output h3 { color: #38bdf8; margin-top: 1.5rem; font-size: 1.25rem; }
-        .report-output p, .report-output li { color: #cbd5e1; font-size: 0.95rem; }
+        /* ── Base ─────────────────────────────────────────────────────── */
+        *, *::before, *::after { box-sizing: border-box; }
+        body {
+            background: #070d1a;
+            color: #dde6f0;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            min-height: 100vh;
+        }
+
+        /* Subtle topographic grid background */
+        body::before {
+            content: '';
+            position: fixed; inset: 0;
+            background-image:
+                linear-gradient(rgba(56,189,248,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(56,189,248,0.03) 1px, transparent 1px);
+            background-size: 48px 48px;
+            pointer-events: none; z-index: 0;
+        }
+
+        .page-wrap { position: relative; z-index: 1; }
+
+        /* ── Cards ────────────────────────────────────────────────────── */
+        .glass {
+            background: rgba(10, 18, 35, 0.85);
+            border: 1px solid rgba(56, 189, 248, 0.12);
+            border-radius: 14px;
+            backdrop-filter: blur(16px);
+        }
+
+        /* ── Typography ───────────────────────────────────────────────── */
+        .wordmark {
+            font-size: 1.3rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            background: linear-gradient(120deg, #38bdf8 0%, #818cf8 60%, #a78bfa 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .section-label {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            font-weight: 700;
+            color: #3b536e;
+            margin-bottom: 0.75rem;
+        }
+
+        /* ── Pipeline breadcrumb ──────────────────────────────────────── */
+        .pipeline-bar {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            flex-wrap: wrap;
+        }
+        .p-node {
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 0.25rem 0.7rem;
+            border-radius: 20px;
+            letter-spacing: 0.02em;
+        }
+        .p-node.done {
+            background: rgba(34, 197, 94, 0.12);
+            border: 1px solid rgba(34, 197, 94, 0.35);
+            color: #4ade80;
+        }
+        .p-node.idle {
+            background: rgba(248, 197, 56, 0.1);
+            border: 1px solid rgba(248, 197, 56, 0.25);
+            color: #fbbf24;
+        }
+        .p-arrow { color: #1e3a52; font-size: 0.75rem; }
+
+        /* ── Form inputs ──────────────────────────────────────────────── */
+        .upload-zone {
+            background: rgba(56, 189, 248, 0.04);
+            border: 1px dashed rgba(56, 189, 248, 0.25);
+            border-radius: 10px;
+            padding: 0.75rem;
+            transition: border-color 0.2s;
+        }
+        .upload-zone:hover { border-color: rgba(56, 189, 248, 0.5); }
+        .upload-zone input[type="file"] {
+            background: transparent;
+            border: none;
+            color: #94a3b8;
+            font-size: 0.8rem;
+            padding: 0;
+            width: 100%;
+        }
+        .upload-zone input[type="file"]:focus { outline: none; box-shadow: none; }
+        .upload-hint { font-size: 0.68rem; color: #3b536e; margin-top: 0.35rem; }
+
+        .btn-run {
+            background: linear-gradient(135deg, #0ea5e9, #6366f1);
+            border: none;
+            color: #fff;
+            font-weight: 700;
+            font-size: 0.85rem;
+            letter-spacing: 0.04em;
+            padding: 0.65rem 1.25rem;
+            border-radius: 10px;
+            width: 100%;
+            transition: opacity 0.2s, transform 0.15s;
+        }
+        .btn-run:hover { opacity: 0.88; transform: translateY(-1px); color: #fff; }
+        .btn-run:active { transform: translateY(0); }
+
+        /* ── Telemetry stats ──────────────────────────────────────────── */
+        .stat-pill {
+            background: rgba(56, 189, 248, 0.06);
+            border: 1px solid rgba(56, 189, 248, 0.14);
+            border-radius: 8px;
+            padding: 0.55rem 0.6rem;
+            text-align: center;
+        }
+        .stat-pill .val { font-size: 1.2rem; font-weight: 800; color: #38bdf8; line-height: 1; }
+        .stat-pill .lbl { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.08em; color: #3b536e; margin-top: 2px; }
+
+        /* ── Vision output ────────────────────────────────────────────── */
+        .vision-pre {
+            background: rgba(7, 13, 26, 0.7);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 8px;
+            padding: 0.9rem 1rem;
+            font-size: 0.82rem;
+            color: #8fb4d0;
+            line-height: 1.75;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+        }
+
+        /* ── Entity chips ─────────────────────────────────────────────── */
+        .chip {
+            display: inline-block;
+            padding: 0.18rem 0.6rem;
+            border-radius: 10px;
+            font-size: 0.72rem;
+            font-weight: 500;
+            margin: 2px;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .chip-rock       { background: rgba(99, 102, 241, 0.2); border: 1px solid rgba(99,102,241,0.4); color: #a5b4fc; }
+        .chip-formation  { background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16,185,129,0.35); color: #6ee7b7; }
+        .chip-depth      { background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245,158,11,0.35); color: #fcd34d; }
+        .chip-hazard     { background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239,68,68,0.35); color: #fca5a5; }
+        .chip-info       { background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56,189,248,0.25); color: #7dd3fc; }
+
+        .entity-group { margin-bottom: 0.7rem; }
+        .entity-group-label { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.1em; color: #3b536e; margin-bottom: 0.3rem; }
+
+        /* ── Fusion report markdown ───────────────────────────────────── */
+        .report-body { font-size: 0.85rem; line-height: 1.8; }
+        .report-body h2 {
+            color: #38bdf8;
+            font-size: 0.95rem;
+            font-weight: 700;
+            margin-top: 1.6rem;
+            margin-bottom: 0.5rem;
+            padding-bottom: 0.35rem;
+            border-bottom: 1px solid rgba(56,189,248,0.18);
+            letter-spacing: 0.02em;
+        }
+        .report-body h3 { color: #818cf8; font-size: 0.88rem; margin-top: 1rem; }
+        .report-body p, .report-body li { color: #7a9cb8; }
+        .report-body strong { color: #c8dff0; }
+        .report-body ul { padding-left: 1.25rem; }
+
+        /* ── Loading overlay ──────────────────────────────────────────── */
+        #loading {
+            display: none;
+            position: fixed; inset: 0;
+            background: rgba(7, 13, 26, 0.96);
+            z-index: 9999;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .ring {
+            width: 56px; height: 56px;
+            border: 3px solid rgba(56, 189, 248, 0.15);
+            border-top-color: #38bdf8;
+            border-radius: 50%;
+            animation: spin 0.75s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .load-step {
+            font-size: 0.78rem;
+            color: #1e3a52;
+            padding: 0.25rem 0;
+            transition: color 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .load-step.lit { color: #38bdf8; }
+        .load-step .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+        /* ── Idle placeholder ─────────────────────────────────────────── */
+        .idle-well {
+            min-height: 340px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border: 1px dashed rgba(56,189,248,0.1);
+            border-radius: 14px;
+            color: #1e3a52;
+            text-align: center;
+            gap: 0.5rem;
+        }
+        .idle-icon { font-size: 2.5rem; opacity: 0.4; }
+
+        /* ── Divider ──────────────────────────────────────────────────── */
+        hr.dim { border-color: rgba(255,255,255,0.05); }
     </style>
 </head>
 <body>
+<div class="page-wrap container-fluid py-4 px-4">
 
-    <div class="container py-5">
-        <header class="pb-4 mb-5 border-bottom border-secondary d-flex justify-content-between align-items-center">
-            <div>
-                <h1 class="fw-bold h3 text-gradient">GeoMind Analytics Engine</h1>
-                <p class="text-muted small m-0">Proprietary Multi-Modal Pipeline Framework (CV + RAG Fusion)</p>
-            </div>
-            <span class="badge bg-info bg-opacity-20 text-info px-3 py-2 border border-info border-opacity-30">Pipeline Node: Active</span>
-        </header>
+    <!-- ── HEADER ─────────────────────────────────────────────────────── -->
+    <header class="d-flex justify-content-between align-items-center flex-wrap gap-3 pb-3 mb-4" style="border-bottom: 1px solid rgba(56,189,248,0.1);">
+        <div>
+            <div class="wordmark">GeoMind</div>
+            <div style="font-size:0.72rem; color:#3b536e; margin-top:2px;">Multi-Modal Geospatial Intelligence · CV + NLP + RAG Fusion</div>
+        </div>
 
-        <div class="row g-4">
-            <div class="col-lg-4">
-                <div class="glass-card p-4">
-                    <h5 class="fw-bold mb-4 text-white">Ingestion Matrix</h5>
-                    <form action="/analyze" method="post" enctype="multipart/form-data">
-                        
-                        <div class="mb-4">
-                            <label class="form-label small text-uppercase text-muted fw-bold">Drone / Core Imagery</label>
-                            <input type="file" class="form-control bg-dark text-white border-secondary" name="image" accept="image/*" required>
+        <div class="pipeline-bar">
+            {% if submitted %}
+                <span class="p-node done">👁 Vision LLM</span>
+                <span class="p-arrow">›</span>
+                <span class="p-node done">📄 PDF Ingest</span>
+                <span class="p-arrow">›</span>
+                <span class="p-node done">🧠 NLP Entities</span>
+                <span class="p-arrow">›</span>
+                <span class="p-node done">🔍 TF-IDF RAG</span>
+                <span class="p-arrow">›</span>
+                <span class="p-node done">✦ Fusion Report</span>
+            {% else %}
+                <span class="p-node idle">⬡ Pipeline Idle</span>
+            {% endif %}
+        </div>
+    </header>
+
+    <!-- ── MAIN GRID ──────────────────────────────────────────────────── -->
+    <div class="row g-4">
+
+        <!-- LEFT: Controls -->
+        <div class="col-lg-3">
+            <div class="glass p-4">
+                <div class="section-label">Ingestion Matrix</div>
+
+                <form action="/analyze" method="post" enctype="multipart/form-data" id="pform">
+                    <div class="mb-3">
+                        <div class="upload-zone">
+                            <div style="font-size:0.72rem; color:#4a7a9b; margin-bottom:0.4rem; font-weight:600;">DRONE / CORE IMAGERY</div>
+                            <input type="file" name="image" accept="image/*" required>
+                            <div class="upload-hint">Outcrop photo, drone frame, rock core scan</div>
                         </div>
-
-                        <div class="mb-4">
-                            <label class="form-label small text-uppercase text-muted fw-bold">Geological Field Report (PDF)</label>
-                            <input type="file" class="form-control bg-dark text-white border-secondary" name="pdf_report" accept="application/pdf" required>
-                        </div>
-
-                        <button type="submit" class="btn btn-info text-dark w-100 fw-bold py-2.5 mt-2">Execute Fusion Pipeline</button>
-                    </form>
-                </div>
-            </div>
-
-            <div class="col-lg-8">
-                {% if submitted %}
-                <div class="glass-card p-4 mb-4">
-                    <h5 class="fw-bold mb-3 text-white">👁️ Visual Processing Layer Node</h5>
-                    <div class="row">
-                        {% for item in cv_features %}
-                        <div class="col-md-4">
-                            <div class="p-3 bg-dark bg-opacity-50 border border-secondary rounded mb-2">
-                                <div class="text-muted small text-truncate">{{ item.feature }}</div>
-                                <div class="h5 m-0 fw-bold text-info">{{ item.confidence }}%</div>
-                            </div>
-                        </div>
-                        {% endfor %}
                     </div>
-                </div>
 
-                <div class="glass-card p-4">
-                    <h5 class="fw-bold mb-3 text-white">✨ Flagship Synthesized Decision Report</h5>
-                    <div class="p-4 bg-dark bg-opacity-40 border border-secondary rounded report-output" id="markdown-target"></div>
-                    <textarea id="markdown-payload" style="display: none;">{{ fusion_report }}</textarea>
-                </div>
-                {% else %}
-                <div class="glass-card p-5 text-center text-muted border-dashed">
-                    <p class="m-0 py-5">Pipeline idling. Upload geological core imagery and field PDF documentation to trigger multi-modal synthesis extraction.</p>
+                    <div class="mb-4">
+                        <div class="upload-zone">
+                            <div style="font-size:0.72rem; color:#4a7a9b; margin-bottom:0.4rem; font-weight:600;">GEOLOGICAL FIELD REPORT (PDF)</div>
+                            <input type="file" name="pdf_report" accept="application/pdf" required>
+                            <div class="upload-hint">Boring logs, site investigation, excavation data</div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-run">▶ Execute Fusion Pipeline</button>
+                </form>
+
+                {% if submitted and pdf_stats %}
+                <hr class="dim mt-4">
+                <div class="section-label mt-3">Pipeline Telemetry</div>
+                <div class="row g-2">
+                    <div class="col-4">
+                        <div class="stat-pill">
+                            <div class="val">{{ pdf_stats.pages }}</div>
+                            <div class="lbl">Pages</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="stat-pill">
+                            <div class="val">{{ pdf_stats.chunks }}</div>
+                            <div class="lbl">Chunks</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="stat-pill">
+                            <div class="val">{{ pdf_stats.retrieved }}</div>
+                            <div class="lbl">Retrieved</div>
+                        </div>
+                    </div>
                 </div>
                 {% endif %}
             </div>
         </div>
-    </div>
 
-    <script>
-        window.addEventListener('DOMContentLoaded', () => {
-            const payload = document.getElementById('markdown-payload');
-            if (payload) {
-                document.getElementById('markdown-target').innerHTML = marked.parse(payload.value);
-            }
+        <!-- RIGHT: Output -->
+        <div class="col-lg-9">
+            {% if submitted %}
+
+            <!-- Row 1: Vision + Entities side by side -->
+            <div class="row g-3 mb-3">
+
+                <!-- Vision Analysis -->
+                <div class="col-md-6">
+                    <div class="glass p-4 h-100">
+                        <div class="section-label">Step 1 — Groq Vision Analysis</div>
+                        <div class="vision-pre">{{ vision_analysis }}</div>
+                    </div>
+                </div>
+
+                <!-- NLP Entity Extraction -->
+                <div class="col-md-6">
+                    <div class="glass p-4 h-100">
+                        <div class="section-label">Step 3 — NLP Entity Extraction</div>
+
+                        {% if entities.rock_types %}
+                        <div class="entity-group">
+                            <div class="entity-group-label">Rock Types</div>
+                            {% for r in entities.rock_types %}<span class="chip chip-rock">{{ r }}</span>{% endfor %}
+                        </div>
+                        {% endif %}
+
+                        {% if entities.formations %}
+                        <div class="entity-group">
+                            <div class="entity-group-label">Formations</div>
+                            {% for f in entities.formations %}<span class="chip chip-formation">{{ f }}</span>{% endfor %}
+                        </div>
+                        {% endif %}
+
+                        {% if entities.depths %}
+                        <div class="entity-group">
+                            <div class="entity-group-label">Depths</div>
+                            {% for d in entities.depths %}<span class="chip chip-depth">{{ d }}</span>{% endfor %}
+                        </div>
+                        {% endif %}
+
+                        {% if entities.hazards %}
+                        <div class="entity-group">
+                            <div class="entity-group-label">Hazards Identified</div>
+                            {% for h in entities.hazards %}<span class="chip chip-hazard">{{ h }}</span>{% endfor %}
+                        </div>
+                        {% endif %}
+
+                        {% if entities.boring_metrics %}
+                        <div class="entity-group">
+                            <div class="entity-group-label">Boring / Drilling Metrics</div>
+                            {% for b in entities.boring_metrics %}<span class="chip chip-info">{{ b }}</span>{% endfor %}
+                        </div>
+                        {% endif %}
+
+                        {% if entities.recommendations %}
+                        <div class="entity-group">
+                            <div class="entity-group-label">Recommendations</div>
+                            {% for rec in entities.recommendations %}<span class="chip chip-info">{{ rec }}</span>{% endfor %}
+                        </div>
+                        {% endif %}
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- Row 2: Fusion Report full width -->
+            <div class="glass p-4">
+                <div class="section-label">Step 5 — Multi-Modal Fusion Report</div>
+                <div class="report-body" id="report-target"></div>
+                <textarea id="report-payload" style="display:none;">{{ fusion_report }}</textarea>
+            </div>
+
+            {% else %}
+            <div class="idle-well">
+                <div class="idle-icon">⛰</div>
+                <div style="font-size:0.9rem;">Pipeline idle</div>
+                <div style="font-size:0.78rem; max-width:380px;">Upload geological imagery and a PDF field report on the left to trigger multi-modal analysis.</div>
+                <div style="font-size:0.7rem; margin-top:0.5rem; color:#1e3a52;">Vision LLM → PDF Ingestion → NLP Entity Extraction → TF-IDF RAG → Fusion Report</div>
+            </div>
+            {% endif %}
+        </div>
+
+    </div><!-- /row -->
+</div><!-- /page-wrap -->
+
+<!-- ── LOADING OVERLAY ─────────────────────────────────────────────────── -->
+<div id="loading">
+    <div class="ring"></div>
+    <div style="margin-top:1.5rem; font-size:0.8rem; color:#38bdf8; font-weight:600;">Executing Pipeline…</div>
+    <div style="font-size:0.7rem; color:#3b536e; margin-top:0.2rem;">15–30 seconds</div>
+    <div style="margin-top:1.2rem; display:flex; flex-direction:column; gap:0.3rem;" id="load-steps">
+        <div class="load-step" id="ls1"><span class="dot"></span>Step 1 — Groq Vision LLM analyzing imagery</div>
+        <div class="load-step" id="ls2"><span class="dot"></span>Step 2 — Ingesting & chunking PDF report</div>
+        <div class="load-step" id="ls3"><span class="dot"></span>Step 3 — NLP entity extraction (JSON)</div>
+        <div class="load-step" id="ls4"><span class="dot"></span>Step 4 — TF-IDF RAG retrieval</div>
+        <div class="load-step" id="ls5"><span class="dot"></span>Step 5 — Multi-modal fusion synthesis</div>
+    </div>
+</div>
+
+<script>
+    // Render fusion report markdown
+    window.addEventListener('DOMContentLoaded', () => {
+        const src = document.getElementById('report-payload');
+        const tgt = document.getElementById('report-target');
+        if (src && tgt && src.value.trim()) {
+            tgt.innerHTML = marked.parse(src.value);
+        }
+    });
+
+    // Loading overlay with sequential step animation
+    document.getElementById('pform')?.addEventListener('submit', () => {
+        document.getElementById('loading').style.display = 'flex';
+        const delays = [0, 5000, 9000, 14000, 18000];
+        ['ls1','ls2','ls3','ls4','ls5'].forEach((id, i) => {
+            setTimeout(() => document.getElementById(id)?.classList.add('lit'), delays[i]);
         });
-    </script>
+    });
+</script>
 </body>
 </html>
